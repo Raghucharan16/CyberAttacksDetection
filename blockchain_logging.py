@@ -1,39 +1,37 @@
-import hashlib
 import json
+import hashlib
 import time
 
 class BlockchainLogger:
     def __init__(self):
-        # Mock blockchain for simplicity
-        print("Using mock blockchain logging (Hyperledger Fabric optional).")
-        self.storage = 'threat_logs.json'
+        self.chain = []
+        self.current_transactions = []
+        self.file_path = 'threat_chain.json'
 
-    def generate_hash(self, data):
-        """Generate SHA-256 hash for data integrity."""
-        data_str = json.dumps(data, sort_keys=True)
-        return hashlib.sha256(data_str.encode()).hexdigest()
+    def log_threat(self, features, confidence):
+        block = {
+            'index': len(self.chain) + 1,
+            'timestamp': time.time(),
+            'data': features,
+            'confidence': confidence,
+            'previous_hash': self.last_block_hash if self.chain else '0'
+        }
+        block['hash'] = self.hash_block(block)
+        self.chain.append(block)
+        self.save_chain()
+        return block
 
-    def log_threat(self, threat_data):
-        """Log threat data to mock blockchain."""
-        timestamp = time.time()
-        threat_data['timestamp'] = timestamp
-        threat_data['hash'] = self.generate_hash(threat_data)
+    def get_logs(self, count=10):
+        return self.chain[-count:]
 
-        with open(self.storage, 'a') as f:
-            f.write(json.dumps(threat_data) + '\n')
-        print(f"Threat logged: {threat_data}")
-        return threat_data
+    def hash_block(self, block):
+        block_str = json.dumps(block, sort_keys=True).encode()
+        return hashlib.sha256(block_str).hexdigest()
 
-    def query_logs(self):
-        """Query recent logs from mock blockchain."""
-        try:
-            with open(self.storage, 'r') as f:
-                logs = [json.loads(line) for line in f]
-            return logs[-10:]  # Return last 10 logs
-        except FileNotFoundError:
-            return []
+    def save_chain(self):
+        with open(self.file_path, 'w') as f:
+            json.dump(self.chain, f)
 
-if __name__ == "__main__":
-    logger = BlockchainLogger()
-    threat = {"traffic_features": [0.1] * 78, "is_threat": True, "probability": 0.95}
-    logger.log_threat(threat)
+    @property
+    def last_block_hash(self):
+        return self.chain[-1]['hash'] if self.chain else '0'

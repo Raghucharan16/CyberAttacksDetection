@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Adaptive Cybersecurity Dashboard</title>
+    <title>Threat Detection Dashboard</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; }
-        .input-group { margin: 10px 0; }
-        label { display: inline-block; width: 150px; }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .input-group { margin: 15px 0; }
         input { width: 200px; padding: 5px; }
         #result { padding: 20px; margin: 20px 0; border-radius: 5px; }
         .threat { background: #ffebee; border: 2px solid #ff1744; }
@@ -15,114 +13,83 @@
     </style>
 </head>
 <body>
-    <h1>Adaptive Cybersecurity Framework Demo</h1>
+    <h1>Network Threat Detection</h1>
     
-    <div id="inputForm">
-        <h2>Network Traffic Input</h2>
-        <div class="input-group">
-            <label>Duration (s):</label>
-            <input type="number" step="0.1" id="duration" value="0">
-        </div>
-        <div class="input-group">
-            <label>Protocol Type:</label>
-            <select id="protocol_type">
-                <option value="0">TCP</option>
-                <option value="1">UDP</option>
-                <option value="2">ICMP</option>
-            </select>
-        </div>
-        <div class="input-group">
-            <label>Total Packets:</label>
-            <input type="number" id="total_packets" value="1">
-        </div>
-        <div class="input-group">
-            <label>Source Bytes:</label>
-            <input type="number" id="src_bytes" value="0">
-        </div>
-        <div class="input-group">
-            <label>Destination Bytes:</label>
-            <input type="number" id="dst_bytes" value="0">
-        </div>
-        
-        <button onclick="analyzeTraffic()">Analyze Traffic</button>
+    <div class="input-group">
+        <label>Flow Duration (ms):</label>
+        <input type="number" id="flow_duration" value="0">
+    </div>
+    
+    <div class="input-group">
+        <label>Destination Port:</label>
+        <input type="number" id="dest_port" value="80">
+    </div>
+    
+    <div class="input-group">
+        <label>Total Fwd Packets:</label>
+        <input type="number" id="fwd_packets" value="10">
     </div>
 
+    <button onclick="analyze()">Check Traffic</button>
     <div id="result"></div>
 
-    <h2>Blockchain Threat Logs</h2>
-    <div id="blockchainLogs"></div>
+    <h2>Recent Threats</h2>
+    <div id="threat-list"></div>
 
     <script>
-    function analyzeTraffic() {
-        const input = {
-            duration: $('#duration').val(),
-            protocol_type: $('#protocol_type').val(),
-            total_packets: $('#total_packets').val(),
-            src_bytes: $('#src_bytes').val(),
-            dst_bytes: $('#dst_bytes').val()
-        };
+        function analyze() {
+            const inputs = {
+                'Flow Duration': $('#flow_duration').val(),
+                'Destination Port': $('#dest_port').val(),
+                'Total Fwd Packets': $('#fwd_packets').val(),
+                'Total Length of Fwd Packets': 1500,  // Default value
+                'Flow Bytes/s': 100000                // Default value
+            };
 
-        // Add client-side validation
-        if (Object.values(input).some(v => v === "")) {
-            $('#result').html("Error: All fields are required!");
-            return;
+            $.ajax({
+                url: '/detect',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(inputs),
+                success: function(response) {
+                    const result = $('#result');
+                    result.removeClass('threat safe');
+                    
+                    if(response.threat) {
+                        result.html(`
+                            <h3>⚠️ Threat Detected!</h3>
+                            <p>Confidence: ${(response.confidence * 100).toFixed(1)}%</p>
+                        `).addClass('threat');
+                    } else {
+                        result.html(`
+                            <h3>✅ Traffic Normal</h3>
+                            <p>Risk Level: ${(response.confidence * 100).toFixed(1)}%</p>
+                        `).addClass('safe');
+                    }
+                    updateThreatList();
+                }
+            });
         }
 
-        $.ajax({
-            url: '/api/detect',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(input),
-            success: function(data) {
-                const resultDiv = $('#result');
-                resultDiv.removeClass('threat safe');
-                
-                if (data.is_threat) {
-                    resultDiv.html(`
-                        <h3>🚨 Malicious Traffic Detected!</h3>
-                        <p>Confidence: ${(data.probability * 100).toFixed(2)}%</p>
-                        <p>Submitted Features:</p>
-                        <pre>${JSON.stringify(data.input_features, null, 2)}</pre>
-                    `).addClass('threat');
-                } else {
-                    resultDiv.html(`
-                        <h3>✅ Normal Traffic Detected</h3>
-                        <p>Threat Probability: ${(data.probability * 100).toFixed(2)}%</p>
-                        <p>Submitted Features:</p>
-                        <pre>${JSON.stringify(data.input_features, null, 2)}</pre>
-                    `).addClass('safe');
-                }
-                updateBlockchainLogs();
-            },
-            error: function(xhr) {
-                $('#result').html(`Error: ${xhr.responseJSON?.error || xhr.statusText}`);
-            }
-        });
-    }
-
-        function updateBlockchainLogs() {
-            $.get('/api/threats', function(data) {
-                let logs = '<div class="log-container">';
-                data.slice(-5).reverse().forEach(log => {
-                    logs += `
-                        <div class="log-entry">
-                            <h4>🚩 Threat Detected at ${new Date(log.timestamp * 1000).toLocaleString()}</h4>
-                            <p>Confidence: ${(log.probability * 100).toFixed(2)}%</p>
-                            <details>
-                                <summary>Input Details</summary>
-                                <pre>${JSON.stringify(log.user_input, null, 2)}</pre>
-                            </details>
+        function updateThreatList() {
+            $.get('/threats', function(logs) {
+                let html = '';
+                logs.slice(-5).reverse().forEach(log => {
+                    html += `
+                        <div class="threat-entry">
+                            <p>⏰ ${new Date(log.timestamp * 1000).toLocaleString()}</p>
+                            <p>🚩 ${log.data.DestinationPort} : ${log.data.FlowBytes}</p>
+                            <p>🔒 Confidence: ${(log.confidence * 100).toFixed(1)}%</p>
                         </div>
                     `;
                 });
-                logs += '</div>';
-                $('#blockchainLogs').html(logs);
+                $('#threat-list').html(html);
             });
         }
 
         // Initial load
-        updateBlockchainLogs();
-        setInterval(updateBlockchainLogs, 5000);
+        updateThreatList();
+        setInterval(updateThreatList, 5000);
     </script>
 </body>
 </html>
