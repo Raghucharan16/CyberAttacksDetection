@@ -1,40 +1,28 @@
-from flask import Flask, request, jsonify, render_template
-from ai_threat_detection import ThreatDetector
-from blockchain_logging import BlockchainLogger
-import threading
-import time
+from flask import Flask, render_template, request
+from integration_layer import process_request
+from blockchain_logging import blockchain
 
 app = Flask(__name__)
-detector = ThreatDetector()
-logger = BlockchainLogger()
 
-# Start background monitoring
-from integration_layer import IntegrationLayer
-monitor = IntegrationLayer(detector, logger)
-monitor.start()
+# Updated features to be asked from the user
+FEATURES = ['Flow Duration', 'Total Fwd Packets', 'Total Backward Packets', 'Total Length of Fwd Packets']
 
-@app.route('/')
-def home():
-    return render_template('dashboard.html')
-
-@app.route('/detect', methods=['POST'])
-def detect():
-    try:
-        data = request.get_json()
-        is_threat, confidence = detector.detect_threat(data)
-        if is_threat:
-            logger.log_threat(data, confidence)
-        return jsonify({
-            'threat': is_threat,
-            'confidence': confidence,
-            'features': data
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/threats')
-def get_threats():
-    return jsonify(logger.get_logs())
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    result = None
+    if request.method == 'POST':
+        # Retrieve form data for each important feature
+        input_features = { feature: request.form.get(feature, 0) for feature in FEATURES }
+        
+        threat_detected, log_entry = process_request(input_features)
+        result = {
+            'threat_detected': threat_detected,
+            'log_entry': log_entry
+        }
+    
+    # Get current blockchain logs to display on the dashboard
+    chain = blockchain.get_chain()
+    return render_template('dashboard.html', features=FEATURES, result=result, chain=chain)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(debug=True)

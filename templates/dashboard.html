@@ -1,95 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Threat Detection Dashboard</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .input-group { margin: 15px 0; }
-        input { width: 200px; padding: 5px; }
-        #result { padding: 20px; margin: 20px 0; border-radius: 5px; }
-        .threat { background: #ffebee; border: 2px solid #ff1744; }
-        .safe { background: #e8f5e9; border: 2px solid #00e676; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Adaptive Cybersecurity Dashboard</title>
+  <!-- Bootstrap CSS for styling -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding-top: 40px;
+    }
+    .container {
+      max-width: 600px;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .result.threat {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .result.safe {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .log-list {
+      list-style-type: none;
+      padding: 0;
+    }
+    .log-list li {
+      margin-bottom: 10px;
+      padding: 10px;
+      background: #e9ecef;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Network Threat Detection</h1>
+  <div class="container">
+    <h1>Adaptive Cybersecurity Dashboard</h1>
     
-    <div class="input-group">
-        <label>Flow Duration (ms):</label>
-        <input type="number" id="flow_duration" value="0">
-    </div>
-    
-    <div class="input-group">
-        <label>Destination Port:</label>
-        <input type="number" id="dest_port" value="80">
-    </div>
-    
-    <div class="input-group">
-        <label>Total Fwd Packets:</label>
-        <input type="number" id="fwd_packets" value="10">
-    </div>
+    <form method="post">
+      <div class="form-group">
+        {% for feature in features %}
+          <label for="{{ feature }}">{{ feature }}:</label>
+          <input type="text" class="form-control" id="{{ feature }}" name="{{ feature }}" placeholder="Enter {{ feature }}" required>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Submit</button>
+    </form>
 
-    <button onclick="analyze()">Check Traffic</button>
-    <div id="result"></div>
+    {% if result %}
+      <div class="result {% if result['threat_detected'] %}threat{% else %}safe{% endif %}">
+        <h2>Result</h2>
+        {% if result['threat_detected'] %}
+          <p><strong>Threat Detected!</strong></p>
+        {% else %}
+          <p><strong>No Threat Detected.</strong></p>
+        {% endif %}
+        <h4>Log Entry:</h4>
+        <pre>{{ result['log_entry'] | tojson(indent=4) }}</pre>
+      </div>
+    {% endif %}
 
-    <h2>Recent Threats</h2>
-    <div id="threat-list"></div>
+    <h2>Blockchain Log</h2>
+    <ul class="log-list">
+      {% for block in chain %}
+        <li>
+          <strong>Index:</strong> {{ block['index'] }}<br>
+          <strong>Timestamp:</strong> {{ block['timestamp'] }}<br>
+          <strong>Data:</strong> {{ block['data'] }}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 
-    <script>
-        function analyze() {
-            const inputs = {
-                'Flow Duration': $('#flow_duration').val(),
-                'Destination Port': $('#dest_port').val(),
-                'Total Fwd Packets': $('#fwd_packets').val(),
-                'Total Length of Fwd Packets': 1500,  // Default value
-                'Flow Bytes/s': 100000                // Default value
-            };
-
-            $.ajax({
-                url: '/detect',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(inputs),
-                success: function(response) {
-                    const result = $('#result');
-                    result.removeClass('threat safe');
-                    
-                    if(response.threat) {
-                        result.html(`
-                            <h3>⚠️ Threat Detected!</h3>
-                            <p>Confidence: ${(response.confidence * 100).toFixed(1)}%</p>
-                        `).addClass('threat');
-                    } else {
-                        result.html(`
-                            <h3>✅ Traffic Normal</h3>
-                            <p>Risk Level: ${(response.confidence * 100).toFixed(1)}%</p>
-                        `).addClass('safe');
-                    }
-                    updateThreatList();
-                }
-            });
-        }
-
-        function updateThreatList() {
-            $.get('/threats', function(logs) {
-                let html = '';
-                logs.slice(-5).reverse().forEach(log => {
-                    html += `
-                        <div class="threat-entry">
-                            <p>⏰ ${new Date(log.timestamp * 1000).toLocaleString()}</p>
-                            <p>🚩 ${log.data.DestinationPort} : ${log.data.FlowBytes}</p>
-                            <p>🔒 Confidence: ${(log.confidence * 100).toFixed(1)}%</p>
-                        </div>
-                    `;
-                });
-                $('#threat-list').html(html);
-            });
-        }
-
-        // Initial load
-        updateThreatList();
-        setInterval(updateThreatList, 5000);
-    </script>
+  <!-- Optional: Bootstrap JS and dependencies -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

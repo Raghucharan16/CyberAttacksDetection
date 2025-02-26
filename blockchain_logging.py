@@ -1,37 +1,35 @@
-import json
-import hashlib
 import time
 
-class BlockchainLogger:
+# A simple mock blockchain implementation
+class MockBlockchain:
     def __init__(self):
         self.chain = []
-        self.current_transactions = []
-        self.file_path = 'threat_chain.json'
-
-    def log_threat(self, features, confidence):
+        
+    def add_block(self, data):
         block = {
             'index': len(self.chain) + 1,
             'timestamp': time.time(),
-            'data': features,
-            'confidence': confidence,
-            'previous_hash': self.last_block_hash if self.chain else '0'
+            'data': data
         }
-        block['hash'] = self.hash_block(block)
         self.chain.append(block)
-        self.save_chain()
+        print(f"Block added: {block}")
         return block
+    
+    def get_chain(self):
+        return self.chain
 
-    def get_logs(self, count=10):
-        return self.chain[-count:]
+# Global blockchain instance
+blockchain = MockBlockchain()
 
-    def hash_block(self, block):
-        block_str = json.dumps(block, sort_keys=True).encode()
-        return hashlib.sha256(block_str).hexdigest()
-
-    def save_chain(self):
-        with open(self.file_path, 'w') as f:
-            json.dump(self.chain, f)
-
-    @property
-    def last_block_hash(self):
-        return self.chain[-1]['hash'] if self.chain else '0'
+def log_event(event):
+    """
+    Logs an event to the blockchain.
+    
+    Parameters:
+        event (dict): A dictionary containing event details.
+    
+    Returns:
+        dict: The block that was added to the blockchain.
+    """
+    block = blockchain.add_block(event)
+    return block
