@@ -5,7 +5,7 @@ from blockchain_logging import blockchain
 app = Flask(__name__)
 
 # Updated features to be asked from the user
-FEATURES = ['Flow Duration', 'Total Fwd Packets', 'Total Backward Packets', 'Total Length of Fwd Packets', 'protocol']
+FEATURES = ['Flow Duration', 'Total Fwd Packets', 'Total Backward Packets', 'Total Length of Fwd Packets']
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
